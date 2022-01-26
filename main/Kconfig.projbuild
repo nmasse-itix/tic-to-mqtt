@@ -1,0 +1,26 @@
+menu "TIC-to-MQTT Configuration"
+
+    config TIC_MODE
+        int "Mode historique (0) ou standard (1)"
+        range 0 1
+        default 0
+        help
+            Configure la liaison TIC en mode historique ou en mode standard.
+
+    config TIC_UART_RXD
+        int "Pin utilisée pour recevoir la TIC"
+        range 0 34 if IDF_TARGET_ESP32
+        range 0 46 if IDF_TARGET_ESP32S2
+        range 0 19 if IDF_TARGET_ESP32C3
+        default 16
+        help
+            GPIO number for UART RX pin.
+
+    config TIC_UART_STACK_SIZE
+        int "Taille de la pile pour le décodage de la TIC"
+        range 1024 16384
+        default 2048
+        help
+            Defines stack size. Insufficient stack size can cause crash.
+
+endmenu
