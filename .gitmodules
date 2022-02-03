@@ -1,0 +1,4 @@
+[submodule "LibTeleinfo"]
+	path = main/libteleinfo
+	url = https://github.com/nmasse-itix/LibTeleinfo.git
+	branch = master

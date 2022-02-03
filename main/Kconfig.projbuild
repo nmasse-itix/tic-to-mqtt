@@ -23,4 +23,28 @@ menu "TIC-to-MQTT Configuration"
         help
             Defines stack size. Insufficient stack size can cause crash.
 
+    config TIC_UART_BUFFER_SIZE
+        int "UART internal buffer size"
+        range 128 16384
+        default 256
+        help
+            Defines buffer size.
+
+    config TIC_UART_READ_BUFFER_SIZE
+        int "UART reading buffer size"
+        range 128 16384
+        default 256
+        help
+            Defines buffer size.
+
+    config TIC_UART_PORT_NUM
+        int "UART port number"
+        range 0 2 if IDF_TARGET_ESP32
+        range 0 1 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3
+        default 2 if IDF_TARGET_ESP32
+        default 1 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3
+        help
+            UART communication port number for the example.
+            See UART documentation for available port numbers.
+
 endmenu
