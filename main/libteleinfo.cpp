@@ -17,8 +17,13 @@ EXTERNC void libteleinfo_init(libteleinfo_data_callback dcb, libteleinfo_adps_ca
     data_cb = dcb;
     adps_cb = acb;
 
+    _Mode_e ltmode = TINFO_MODE_HISTORIQUE;
+    if (CONFIG_TIC_MODE) {
+        ltmode = TINFO_MODE_STANDARD;
+    }
+
     // Initialize the LibTeleinfo
-    tinfo.init();
+    tinfo.init(ltmode);
     tinfo.attachData(_libteleinfo_data_callback);
     tinfo.attachADPS(_libteleinfo_adps_callback);
 }
