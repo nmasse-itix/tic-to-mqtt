@@ -28,6 +28,10 @@ var testCases []TestCase = []TestCase{
 		Mode: TIC_MODE_HISTORIQUE,
 		Steps: []TestStep{
 			{
+				// LibTeleinfo explicitely discards the first frame
+				Sent: []string{},
+			},
+			{
 				Sent: []string{
 					"MOTDETAT 000000 B",
 					"PPOT 00 #",
