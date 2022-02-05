@@ -19,7 +19,7 @@ menu "TIC-to-MQTT Configuration"
     config TIC_UART_STACK_SIZE
         int "Taille de la pile pour le décodage de la TIC"
         range 1024 16384
-        default 2048
+        default 4096
         help
             Defines stack size. Insufficient stack size can cause crash.
 

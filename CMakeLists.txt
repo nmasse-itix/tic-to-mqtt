@@ -4,3 +4,5 @@ cmake_minimum_required(VERSION 3.5)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(tic_to_mqtt)
+
+target_add_binary_data(tic_to_mqtt.elf "main/cacert.pem" TEXT)

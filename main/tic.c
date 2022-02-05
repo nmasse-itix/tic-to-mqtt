@@ -7,23 +7,18 @@
 #include "esp_log.h"
 #include "tic.h"
 #include "libteleinfo.h"
+#include "mqtt.h"
 
 static const char *TIC_LOGGER = "tic";
 
 void tic_data_callback(time_t ts, uint8_t flags, char * name, char * value) {
-    char * prefix = "";
-
-    if (flags & LIBTELEINFO_FLAGS_ADDED) 
-        prefix = "NEW ->";
-
-    if (flags & LIBTELEINFO_FLAGS_UPDATED)
-        prefix = "MAJ ->";
-
-    ESP_LOGI(TIC_LOGGER, "%s %s=%s", prefix, name, value);
+    ESP_LOGD(TIC_LOGGER, "%s=%s", name, value);
+    mqtt_publish_data(name, value);
 }
 
 void tic_adps_callback(uint8_t phase) {
-    ESP_LOGI(TIC_LOGGER, "ALERTE phase=%d", phase);
+    ESP_LOGD(TIC_LOGGER, "ALERT phase=%d", phase);
+    mqtt_publish_alert(phase);
 }
 
 static void tic_uart_read(void *pvParameters) {
