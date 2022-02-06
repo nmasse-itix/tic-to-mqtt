@@ -12,6 +12,7 @@
 #include "tic.h"
 #include "wifi.h"
 #include "mqtt.h"
+#include "sntp.h"
 
 // Embedded via component.mk
 extern const uint8_t cacert_pem_start[]   asm("_binary_cacert_pem_start");
@@ -28,6 +29,8 @@ void app_main(void) {
     wifi_init_sta();
     wifi_wait_for_online();
     mqtt_init();
+    sntp_start();
     mqtt_wait_for_readiness();
+    sntp_wait_for_readiness();
     tic_uart_init();
 }
