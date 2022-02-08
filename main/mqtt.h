@@ -3,6 +3,5 @@
 
 void mqtt_init();
 void mqtt_publish_data(char* key, char* value);
-void mqtt_publish_alert(uint8_t value);
 
 #endif

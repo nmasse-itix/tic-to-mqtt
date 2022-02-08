@@ -16,11 +16,6 @@ void tic_data_callback(time_t ts, uint8_t flags, char * name, char * value) {
     mqtt_publish_data(name, value);
 }
 
-void tic_adps_callback(uint8_t phase) {
-    ESP_LOGD(TIC_LOGGER, "ALERT phase=%d", phase);
-    mqtt_publish_alert(phase);
-}
-
 static void tic_uart_read(void *pvParameters) {
     uint8_t* buffer = (uint8_t*) malloc(CONFIG_TIC_UART_READ_BUFFER_SIZE);
     if (buffer == NULL) {
@@ -77,7 +72,7 @@ void tic_uart_init() {
     ESP_ERROR_CHECK(uart_param_config(CONFIG_TIC_UART_PORT_NUM, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(CONFIG_TIC_UART_PORT_NUM, UART_PIN_NO_CHANGE, CONFIG_TIC_UART_RXD, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
-    libteleinfo_init(tic_data_callback, tic_adps_callback);
+    libteleinfo_init(tic_data_callback, NULL);
 
     // Create a task to handler UART event from ISR
     BaseType_t xReturned;

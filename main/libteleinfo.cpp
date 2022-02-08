@@ -24,8 +24,12 @@ EXTERNC void libteleinfo_init(libteleinfo_data_callback dcb, libteleinfo_adps_ca
 
     // Initialize the LibTeleinfo
     tinfo.init(ltmode);
-    tinfo.attachData(_libteleinfo_data_callback);
-    tinfo.attachADPS(_libteleinfo_adps_callback);
+    if (dcb != NULL) {
+        tinfo.attachData(_libteleinfo_data_callback);
+    }
+    if (acb != NULL) {
+        tinfo.attachADPS(_libteleinfo_adps_callback);
+    }
 }
 
 EXTERNC void libteleinfo_process(uint8_t* buffer, int len) {

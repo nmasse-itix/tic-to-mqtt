@@ -47,4 +47,16 @@ menu "TIC-to-MQTT Configuration"
             UART communication port number for the example.
             See UART documentation for available port numbers.
 
+    config MQTT_LWT_TOPIC
+        string "MQTT Last Will Testament Topic"
+        default "esp-tic/connected"
+        help
+            Topic where to send LWT (Last Will Testament) upon disconnect.
+
+    config MQTT_TIC_VALUE_TOPIC
+        string "Where to send TIC values"
+        default "esp-tic/status/tic/%s"
+        help
+            Topic where to send regular values received from TIC.
+
 endmenu

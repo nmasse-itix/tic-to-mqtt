@@ -15,6 +15,8 @@
 #include "esp_tls.h"
 #include "esp_ota_ops.h"
 #include <sys/param.h>
+#include <time.h>
+#include "cJSON.h"
 #include "common.h"
 
 static esp_mqtt_client_config_t mqtt_cfg;
@@ -22,26 +24,54 @@ static esp_mqtt_client_handle_t client;
 
 static const char *MQTT_LOGGER = "mqtt";
 
-void mqtt_publish_data(char* key, char* value) {
-    char buffer[128];
-    snprintf(buffer, sizeof(buffer), "home/power/tic/%s", key);
-    int qos = 0;
-    int retain = 0;
-    if (strcmp(key, "BASE") == 0 || strcmp(key, "HCHP") == 0 ||
-        strcmp(key, "HCHC") == 0 || strcmp(key, "PTEC") == 0) {
-        qos = 1;
-        retain = 1;
-    }
-    int ret = esp_mqtt_client_publish(client, buffer, value, 0, qos, retain);
-    if (ret == -1) {
-        ESP_LOGD(MQTT_LOGGER, "MQTT Message discarded!");
-    }
-}
+#define MQTT_QOS_0 0
+#define MQTT_QOS_1 1
+#define MQTT_QOS_2 2
 
-void mqtt_publish_alert(uint8_t value) {
-    char payload[2] = {'0' + value, 0};
-    int ret = esp_mqtt_client_publish(client, "home/power/tic/ADPS", payload, 0, 1, 0);
-    if (ret == -1) {
+#define MQTT_NO_RETAIN 0
+#define MQTT_RETAIN 1
+
+#define JSON_BUFFER_SIZE 128
+#define MQTT_TOPIC_COMPONENT_SIZE 32
+
+void mqtt_publish_data(char* key, char* value) {
+    char topic[sizeof(CONFIG_MQTT_TIC_VALUE_TOPIC) + MQTT_TOPIC_COMPONENT_SIZE];
+    char payload[JSON_BUFFER_SIZE];
+    time_t now;
+    int retain = MQTT_RETAIN;
+
+    // Format the MQTT topic
+    if (!snprintf(topic, sizeof(CONFIG_MQTT_TIC_VALUE_TOPIC) + MQTT_TOPIC_COMPONENT_SIZE, CONFIG_MQTT_TIC_VALUE_TOPIC, key)) {
+        ESP_LOGD(MQTT_LOGGER, "mqtt_publish_data: snprintf failed!");
+        return;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        ESP_LOGD(MQTT_LOGGER, "mqtt_publish_data: cJSON_CreateObject failed!");
+        return;
+    }
+
+    // Add the value
+    cJSON_AddStringToObject(root, "val", value);
+
+    // Add a timestamp
+    time(&now);
+    cJSON_AddNumberToObject(root, "ts", (double)now);
+
+    if (!cJSON_PrintPreallocated(root, payload, JSON_BUFFER_SIZE, 0)) {
+        ESP_LOGD(MQTT_LOGGER, "mqtt_publish_data: cJSON_PrintPreallocated failed!");
+        cJSON_Delete(root);
+        return;
+    }
+    cJSON_Delete(root);
+
+    // Short frames (trames courtes) should not be retained as they signal an alert
+    if (strcmp(key, "ADIR1") == 0 || strcmp(key, "ADIR2") == 0 || strcmp(key, "ADIR3") == 0 || strcmp(key, "ADPS") == 0) {
+        retain = MQTT_NO_RETAIN;
+    }
+
+    if (esp_mqtt_client_publish(client, topic, payload, 0, MQTT_QOS_0, retain) == -1) {
         ESP_LOGD(MQTT_LOGGER, "MQTT Message discarded!");
     }
 }
@@ -51,6 +81,9 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(MQTT_LOGGER, "MQTT_EVENT_CONNECTED");
             xEventGroupSetBits(services_event_group, MQTT_CONNECTED_BIT);
+            if (esp_mqtt_client_publish(client, CONFIG_MQTT_LWT_TOPIC, "1", 0, MQTT_QOS_0, MQTT_RETAIN) == -1) {
+                ESP_LOGD(MQTT_LOGGER, "MQTT Message discarded!");
+            }
             break;
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGI(MQTT_LOGGER, "MQTT_EVENT_DISCONNECTED");
@@ -115,6 +148,10 @@ void mqtt_init(void) {
     mqtt_cfg.use_global_ca_store = true;
     mqtt_cfg.username = get_nvs_string(nvs, "username");
     mqtt_cfg.password = get_nvs_string(nvs, "password");
+    mqtt_cfg.lwt_topic = CONFIG_MQTT_LWT_TOPIC;
+    mqtt_cfg.lwt_msg = "0";
+    mqtt_cfg.lwt_qos = MQTT_QOS_0;
+    mqtt_cfg.lwt_retain = MQTT_RETAIN;
 
     nvs_close(nvs);
 
