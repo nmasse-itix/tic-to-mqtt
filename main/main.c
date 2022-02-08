@@ -13,6 +13,7 @@
 #include "wifi.h"
 #include "mqtt.h"
 #include "sntp.h"
+#include "common.h"
 
 // Embedded via component.mk
 extern const uint8_t cacert_pem_start[]   asm("_binary_cacert_pem_start");
@@ -26,11 +27,13 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_tls_init_global_ca_store());
     ESP_ERROR_CHECK(esp_tls_set_global_ca_store((const unsigned char *) cacert_pem_start, cacert_pem_end - cacert_pem_start));
 
+    // Create an event group to keep track of service readiness
+    services_event_group = xEventGroupCreate();
+
     wifi_init_sta();
-    wifi_wait_for_online();
+    WAIT_FOR(WIFI_CONNECTED_BIT);
     mqtt_init();
     sntp_start();
-    mqtt_wait_for_readiness();
-    sntp_wait_for_readiness();
+    WAIT_FOR(MQTT_CONNECTED_BIT|TIME_SYNC_BIT);
     tic_uart_init();
 }

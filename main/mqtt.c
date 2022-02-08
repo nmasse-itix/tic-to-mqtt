@@ -4,7 +4,6 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
 #include "esp_event.h"
@@ -16,16 +15,10 @@
 #include "esp_tls.h"
 #include "esp_ota_ops.h"
 #include <sys/param.h>
+#include "common.h"
 
-/* FreeRTOS event group to signal when we are connected*/
-static EventGroupHandle_t s_mqtt_event_group;
 static esp_mqtt_client_config_t mqtt_cfg;
 static esp_mqtt_client_handle_t client;
-
-/* The event group allows multiple bits for each event, but we only care about one event:
- * - we are connected to the MQTT server
- */
-#define MQTT_CONNECTED_BIT BIT0
 
 static const char *MQTT_LOGGER = "mqtt";
 
@@ -57,11 +50,11 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
     switch (event->event_id) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(MQTT_LOGGER, "MQTT_EVENT_CONNECTED");
-            xEventGroupSetBits(s_mqtt_event_group, MQTT_CONNECTED_BIT);
+            xEventGroupSetBits(services_event_group, MQTT_CONNECTED_BIT);
             break;
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGI(MQTT_LOGGER, "MQTT_EVENT_DISCONNECTED");
-            xEventGroupClearBits(s_mqtt_event_group, MQTT_CONNECTED_BIT);
+            xEventGroupClearBits(services_event_group, MQTT_CONNECTED_BIT);
             break;
         case MQTT_EVENT_PUBLISHED:
             ESP_LOGI(MQTT_LOGGER, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
@@ -110,8 +103,6 @@ char* get_nvs_string(nvs_handle_t nvs, char* key) {
 }
 
 void mqtt_init(void) {
-    s_mqtt_event_group = xEventGroupCreate();
-
     nvs_handle_t nvs;
     esp_err_t err = nvs_open("mqtt", NVS_READONLY, &nvs);
     if (err != ESP_OK) {
@@ -130,25 +121,4 @@ void mqtt_init(void) {
     client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
     esp_mqtt_client_start(client);
-}
-
-void mqtt_wait_for_readiness(void) {
-    /* Waiting until the connection is established (MQTT_CONNECTED_BIT).
-     * The bits are set by mqtt_event_handler_cb() (see above)
-     */
-    EventBits_t bits = xEventGroupWaitBits(s_mqtt_event_group,
-            MQTT_CONNECTED_BIT,
-            pdFALSE,
-            pdFALSE,
-            portMAX_DELAY);
-
-    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-     * happened. */
-    if (bits & MQTT_CONNECTED_BIT) {
-        ESP_LOGI(MQTT_LOGGER, "Connected to the MQTT server!");
-    } else {
-        ESP_LOGE(MQTT_LOGGER, "UNEXPECTED EVENT");
-    }
-
-    //vEventGroupDelete(s_mqtt_event_group);
 }
