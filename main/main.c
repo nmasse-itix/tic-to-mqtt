@@ -14,12 +14,17 @@
 #include "mqtt.h"
 #include "sntp.h"
 #include "common.h"
+#include "esp_ota_ops.h"
+#include "ota.h"
 
 // Embedded via component.mk
 extern const uint8_t cacert_pem_start[]   asm("_binary_cacert_pem_start");
 extern const uint8_t cacert_pem_end[]   asm("_binary_cacert_pem_end");
 
 void app_main(void) {
+    const esp_app_desc_t* current = esp_ota_get_app_description();
+    ESP_LOGI("main", "Currently running %s version %s", current->project_name, current->version);
+
     // NVS is used to store wifi credentials. So, we need to initialize it first.
     ESP_ERROR_CHECK(nvs_flash_init());
 

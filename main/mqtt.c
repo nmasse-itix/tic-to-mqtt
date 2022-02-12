@@ -8,8 +8,6 @@
 #include "nvs_flash.h"
 #include "esp_event.h"
 #include "esp_netif.h"
-#include "nvs_flash.h"
-#include "nvs.h"
 #include "esp_log.h"
 #include "mqtt_client.h"
 #include "esp_tls.h"
@@ -117,24 +115,6 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
 void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
     ESP_LOGD(MQTT_LOGGER, "Event dispatched from event loop base=%s, event_id=%d", base, event_id);
     mqtt_event_handler_cb(event_data);
-}
-
-char* get_nvs_string(nvs_handle_t nvs, char* key) {
-    size_t required_size;
-    esp_err_t err = nvs_get_str(nvs, key, NULL, &required_size);
-    if (err != ESP_OK) {
-        return NULL;
-    }
-    char* value = malloc(required_size);
-    if (!value) {
-        return NULL;
-    }
-    err = nvs_get_str(nvs, key, value, &required_size);
-    if (err != ESP_OK) {
-        free(value);
-        return NULL;
-    }
-    return value;
 }
 
 void mqtt_init(void) {

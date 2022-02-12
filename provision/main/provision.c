@@ -135,6 +135,10 @@ void wifi_init_sta(void)
     nvs_set_str(nvs, "password", CONFIG_MQTT_PASSWORD);
     nvs_close(nvs);
 
+    ESP_ERROR_CHECK(nvs_open("ota", NVS_READWRITE, &nvs));
+    nvs_set_str(nvs, "update_url", CONFIG_FIRMWARE_URL_PATTERN);
+    nvs_close(nvs);
+
     nvs_dumpall();
 
     /* The event will not be processed after unregister */

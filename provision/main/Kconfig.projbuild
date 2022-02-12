@@ -36,4 +36,10 @@ menu "Provisioning data"
         help
             MQTT password.
 
+    config FIRMWARE_URL_PATTERN
+        string "Firmware URL pattern"
+        default ""
+        help
+            Where to download a specific version of the firmware. Complete URL. Must include "%s".
+
 endmenu

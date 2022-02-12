@@ -1,2 +1,5 @@
 # contains sensitive data
 sdkconfig
+config.dev
+config.prod
+sdkconfig.defaults
