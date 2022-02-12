@@ -39,6 +39,7 @@ void mqtt_publish_data(char* key, char* value) {
     char payload[JSON_BUFFER_SIZE];
     time_t now;
     int retain = MQTT_RETAIN;
+    int qos = MQTT_QOS_1;
 
     // Format the MQTT topic
     if (!snprintf(topic, sizeof(CONFIG_MQTT_TIC_VALUE_TOPIC) + MQTT_TOPIC_COMPONENT_SIZE, CONFIG_MQTT_TIC_VALUE_TOPIC, key)) {
@@ -69,9 +70,10 @@ void mqtt_publish_data(char* key, char* value) {
     // Short frames (trames courtes) should not be retained as they signal an alert
     if (strcmp(key, "ADIR1") == 0 || strcmp(key, "ADIR2") == 0 || strcmp(key, "ADIR3") == 0 || strcmp(key, "ADPS") == 0) {
         retain = MQTT_NO_RETAIN;
+        qos = MQTT_QOS_0;
     }
 
-    if (esp_mqtt_client_publish(client, topic, payload, 0, MQTT_QOS_0, retain) == -1) {
+    if (esp_mqtt_client_publish(client, topic, payload, 0, qos, retain) == -1) {
         ESP_LOGD(MQTT_LOGGER, "MQTT Message discarded!");
     }
 }
@@ -90,7 +92,7 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
             xEventGroupClearBits(services_event_group, MQTT_CONNECTED_BIT);
             break;
         case MQTT_EVENT_PUBLISHED:
-            ESP_LOGI(MQTT_LOGGER, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+            ESP_LOGD(MQTT_LOGGER, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
             break;
         case MQTT_EVENT_ERROR:
             ESP_LOGI(MQTT_LOGGER, "MQTT_EVENT_ERROR");
@@ -139,7 +141,7 @@ void mqtt_init(void) {
     nvs_handle_t nvs;
     esp_err_t err = nvs_open("mqtt", NVS_READONLY, &nvs);
     if (err != ESP_OK) {
-        printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+        ESP_LOGE(MQTT_LOGGER, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
         return;
     }
 
