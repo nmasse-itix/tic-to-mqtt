@@ -16,6 +16,7 @@
 #include <time.h>
 #include "cJSON.h"
 #include "common.h"
+#include "ota.h"
 
 static esp_mqtt_client_config_t mqtt_cfg;
 static esp_mqtt_client_handle_t client;
@@ -31,6 +32,9 @@ static const char *MQTT_LOGGER = "mqtt";
 
 #define JSON_BUFFER_SIZE 128
 #define MQTT_TOPIC_COMPONENT_SIZE 32
+
+#define SYSTEM_COMMAND_UPDATE "firmware-update"
+#define SYSTEM_COMMAND_REBOOT "reboot"
 
 void mqtt_publish_data(char* key, char* value) {
     char topic[sizeof(CONFIG_MQTT_TIC_VALUE_TOPIC) + MQTT_TOPIC_COMPONENT_SIZE];
@@ -76,6 +80,55 @@ void mqtt_publish_data(char* key, char* value) {
     }
 }
 
+esp_err_t mqtt_process_system_command(char* data, int data_len) {
+    esp_err_t status = ESP_OK;
+    cJSON *json = cJSON_ParseWithLength(data, data_len);
+    if (json == NULL) {
+        ESP_LOGI(MQTT_LOGGER, "Error parsing MQTT system command as JSON");
+        status = ESP_FAIL;
+        goto end;
+    }
+
+    cJSON* command = cJSON_GetObjectItemCaseSensitive(json, "command");
+    if (!cJSON_IsString(command) || (command->valuestring == NULL)) {
+        ESP_LOGD(MQTT_LOGGER, "Expected a command name!");
+        status = ESP_FAIL;
+        goto end;
+    }
+
+    if (strcmp(command->valuestring, SYSTEM_COMMAND_REBOOT) == 0) {
+        ESP_LOGE(MQTT_LOGGER, "Received a reboot command. Rebooting now!");
+        esp_restart();
+        goto end;
+    }
+
+    if (strcmp(command->valuestring, SYSTEM_COMMAND_UPDATE) == 0) {
+        cJSON* args = cJSON_GetObjectItemCaseSensitive(json, "args");
+        if (!cJSON_IsObject(args)) {
+            ESP_LOGD(MQTT_LOGGER, "Expected a command argument!");
+            status = ESP_FAIL;
+            goto end;
+        }
+
+        cJSON* version = cJSON_GetObjectItemCaseSensitive(args, "version");
+        if (!cJSON_IsString(version) || (version->valuestring == NULL)) {
+            ESP_LOGD(MQTT_LOGGER, "Expected a version numer!");
+            status = ESP_FAIL;
+            goto end;
+        }
+
+        trigger_ota_update(version->valuestring);
+        goto end;
+    }
+
+    ESP_LOGW(MQTT_LOGGER, "Unknown system command %s!", command->valuestring);
+    status = ESP_FAIL;
+
+    end:
+    cJSON_Delete(json);
+    return status;
+}
+
 esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
     switch (event->event_id) {
         case MQTT_EVENT_CONNECTED:
@@ -83,6 +136,9 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
             xEventGroupSetBits(services_event_group, MQTT_CONNECTED_BIT);
             if (esp_mqtt_client_publish(client, CONFIG_MQTT_LWT_TOPIC, "1", 0, MQTT_QOS_0, MQTT_RETAIN) == -1) {
                 ESP_LOGD(MQTT_LOGGER, "MQTT Message discarded!");
+            }
+            if (esp_mqtt_client_subscribe(client, CONFIG_MQTT_COMMAND_TOPIC, MQTT_QOS_1) == -1) {
+                ESP_LOGD(MQTT_LOGGER, "Could not subscribe to " CONFIG_MQTT_COMMAND_TOPIC " MQTT topic");
             }
             break;
         case MQTT_EVENT_DISCONNECTED:
@@ -104,6 +160,15 @@ esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
             } else {
                 ESP_LOGW(MQTT_LOGGER, "Unknown error type: 0x%x", event->error_handle->error_type);
             }
+            break;
+        case MQTT_EVENT_DATA:
+            if (strncmp(event->topic, CONFIG_MQTT_COMMAND_TOPIC, event->topic_len) == 0) {
+                ESP_LOGD(MQTT_LOGGER, "Received an MQTT system command!");
+                mqtt_process_system_command(event->data, event->data_len);
+            }
+            break;
+        case MQTT_EVENT_SUBSCRIBED:
+            // Expected event. Nothing to do.
             break;
         default:
             ESP_LOGD(MQTT_LOGGER, "Other event id:%d", event->event_id);

@@ -53,6 +53,12 @@ menu "TIC-to-MQTT Configuration"
         help
             Topic where to send LWT (Last Will Testament) upon disconnect.
 
+    config MQTT_COMMAND_TOPIC
+        string "MQTT Last Will Testament Topic"
+        default "esp-tic/command"
+        help
+            Topic where to send system commands.
+
     config MQTT_TIC_VALUE_TOPIC
         string "Where to send TIC values"
         default "esp-tic/status/tic/%s"
